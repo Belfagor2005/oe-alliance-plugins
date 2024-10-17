@@ -1,19 +1,19 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-#######################################################################
-# maintainer: schomi@vuplus-support.org
-#This plugin is free software, you are allowed to
-#modify it (if you keep the license),
-#but you are not allowed to distribute/publish
-#it without source code (this version and your modifications).
-#This means you also have to distribute
-#source code of your modifications.
-#######################################################################
 
+# ######################################################################
+# maintainer: schomi@vuplus-support.org
+# This plugin is free software, you are allowed to
+# modify it (if you keep the license),
+# but you are not allowed to distribute/publish
+# it without source code (this version and your modifications).
+# This means you also have to distribute
+# source code of your modifications.
+# ######################################################################
 from base64 import b64decode
 from os import mkdir, remove
 from os.path import exists, isdir
-from re import search, sub, I, S
+from re import search, sub, I, S, escape
 
 from Components.ActionMap import HelpableActionMap
 from Components.Label import Label
@@ -30,9 +30,14 @@ from Screens.Screen import Screen
 from Screens.Setup import Setup
 from Screens.VirtualKeyBoard import VirtualKeyBoard
 from Tools.BoundFunction import boundFunction
-
-from enigma import eListboxPythonMultiContent, ePicLoad, eTimer, gFont, RT_HALIGN_LEFT, RT_VALIGN_CENTER
-
+from enigma import (
+    eListboxPythonMultiContent,
+    ePicLoad,
+    eTimer,
+    gFont,
+    RT_HALIGN_LEFT,
+    RT_VALIGN_CENTER
+)
 from skin import parameters
 import shutil
 from requests import get, exceptions, Session
@@ -80,7 +85,7 @@ def cleanText(text):
     text = text.replace('.wmv', '').replace('.flv', '').replace('.ts', '').replace('.m2ts', '').replace('.mkv', '').replace('.avi', '').replace('.mpeg', '').replace('.mpg', '').replace('.iso', '').replace('.mp4', '')
 
     for word in cutlist:
-        text = sub(r'(\_|\-|\.|\+)' + word + r'(\_|\-|\.|\+)', '+', text, flags=I)
+        text = sub(r'(\_|\-|\.|\+)' + escape(word) + r'(\_|\-|\.|\+)', '+', text, flags=I)
     text = text.replace('.', ' ').replace('-', ' ').replace('_', ' ').replace('+', '').replace(" Director's Cut", "").replace(" director's cut", "").replace("[Uncut]", "").replace("Uncut", "")
 
     text_split = text.split()
@@ -88,8 +93,8 @@ def cleanText(text):
         text_split.pop(0)  # remove annoying prefixes
     text = " ".join(text_split)
 
-    if search(r'[Ss][\d]+[Ee][\d]+', text):
-        text = sub(r'[Ss][\d]+[Ee][\d]+.*[\w]+', '', text, flags=S | I)
+    if search(r'[Ss][0-9]+[Ee][0-9]+', text):
+        text = sub(r'[Ss][0-9]+[Ee][0-9]+.*[a-zA-Z0-9_]+', '', text, flags=S | I)
     text = sub(r'\(.*\)', '', text).rstrip()  # remove episode number from series, like "series name (234)"
 
     return text
@@ -196,7 +201,7 @@ class tmdbScreen(Screen, HelpableScreen, CoverHelper):
         tmdb.API_KEY = b64decode('ZDQyZTZiODIwYTE1NDFjYzY5Y2U3ODk2NzFmZWJhMzk=')
         if config.plugins.tmdb.apiKey.value != "intern":
             tmdb.API_KEY = config.plugins.tmdb.apiKey.value
-		# print("[TMDb][tmdbScreen] API Key User: " + str(tmdb.API_KEY))
+        # print("[TMDb][tmdbScreen] API Key User: " + str(tmdb.API_KEY))
         self.cert = config.plugins.tmdb.cert.value
         self.text = cleanText(str(text))
         self.saveFilename = str(path)
@@ -214,21 +219,20 @@ class tmdbScreen(Screen, HelpableScreen, CoverHelper):
 
         HelpableScreen.__init__(self)
         self["actions"] = HelpableActionMap(self, "TMDbActions",
-            {
-                "ok": (self.ok, _("Show details")),
-                "cancel": (self.cancel, _("Exit")),
-                "up": (self.keyUp, _("Selection up")),
-                "down": (self.keyDown, _("Selection down")),
-                "nextBouquet": (self.chDown, _("Details down")),
-                "prevBouquet": (self.chUp, _("Details up")),
-                "left": (self.keyLeft, _("Page up")),
-                "right": (self.keyRight, _("Page down")),
-                "red": (self.cancel, _("Exit")),
-                "green": (self.ok, _("Show details")),
-                "yellow": (self.searchString, _("Edit search")),
-                "blue": (self.menu, _("More")),
-                "menu": (self.setup, _("Setup")),
-                "eventview": (self.searchString, _("Edit search"))}, -1)
+                                            {"ok": (self.ok, _("Show details")),
+                                             "cancel": (self.cancel, _("Exit")),
+                                             "up": (self.keyUp, _("Selection up")),
+                                             "down": (self.keyDown, _("Selection down")),
+                                             "nextBouquet": (self.chDown, _("Details down")),
+                                             "prevBouquet": (self.chUp, _("Details up")),
+                                             "left": (self.keyLeft, _("Page up")),
+                                             "right": (self.keyRight, _("Page down")),
+                                             "red": (self.cancel, _("Exit")),
+                                             "green": (self.ok, _("Show details")),
+                                             "yellow": (self.searchString, _("Edit search")),
+                                             "blue": (self.menu, _("More")),
+                                             "menu": (self.setup, _("Setup")),
+                                             "eventview": (self.searchString, _("Edit search"))}, -1)
 
         self['searchinfo'] = Label(_("TMDb: ") + _("Loading..."))
         self['key_red'] = Label(_("Exit"))
@@ -296,10 +300,10 @@ class tmdbScreen(Screen, HelpableScreen, CoverHelper):
             json_data = tmdb.Movies(self.id).recommendations(page=self.page, language=self.lang)
         elif self.actcinema == BEST_RATED_MOVIES:
             json_data = tmdb.Movies().top_rated(page=self.page, language=self.lang)
-			# print("[TMDb][tmdbSearch] json output\n", json_data)
+            # print("[TMDb][tmdbSearch] json output\n", json_data)
         if json_data and json_data['results']:
             self.totalpages = json_data['total_pages']
-			# print("[TMDb][tmdbSearch] results", json_data)
+            # print("[TMDb][tmdbSearch] results", json_data)
 
             for IDs in json_data['results']:
                 self.count += 1
@@ -332,7 +336,7 @@ class tmdbScreen(Screen, HelpableScreen, CoverHelper):
 
                 if fid or title or media:
                     res.append(((title, url_cover, media, fid, url_backdrop),))
-			# print("[TMDb][tmdbSearch] res", res)
+            # print("[TMDb][tmdbSearch] res", res)
             if res:
                 self['list'].setList(res)
                 self.piclist = res
@@ -476,20 +480,18 @@ class tmdbScreenMovie(Screen, HelpableScreen, CoverHelper):
 
         HelpableScreen.__init__(self)
         self["actions"] = HelpableActionMap(self, "TMDbActions",
-            {
-                "ok": (self.ok, _("Cast")),
-                "cancel": (self.cancel, _("Exit")),
-                "up": (self.keyLeft, _("Selection up")),
-                "down": (self.keyRight, _("Selection down")),
-                "left": (self.keyLeft, _("Page up")),
-                "right": (self.keyRight, _("Page down")),
-                "red": (self.cancel, _("Exit")),
-                "green": (self.keyGreen, _("Crew")),
-                "yellow": (self.keyYellow, _("Seasons")),
-                "blue": (self.menu, _("More")),
-                "menu": (self.setup, _("Setup")),
-                "eventview": (self.menu, _("More"))
-            }, -1)
+                                            {"ok": (self.ok, _("Cast")),
+                                             "cancel": (self.cancel, _("Exit")),
+                                             "up": (self.keyLeft, _("Selection up")),
+                                             "down": (self.keyRight, _("Selection down")),
+                                             "left": (self.keyLeft, _("Page up")),
+                                             "right": (self.keyRight, _("Page down")),
+                                             "red": (self.cancel, _("Exit")),
+                                             "green": (self.keyGreen, _("Crew")),
+                                             "yellow": (self.keyYellow, _("Seasons")),
+                                             "blue": (self.menu, _("More")),
+                                             "menu": (self.setup, _("Setup")),
+                                             "eventview": (self.menu, _("More"))}, -1)
 
         self['searchinfo'] = Label(_("TMDb: ") + _("Loading..."))
         self['genre'] = Label("-")
@@ -623,44 +625,44 @@ class tmdbScreenMovie(Screen, HelpableScreen, CoverHelper):
         year = vote_average = vote_count = runtime = country_string = genre_string = subtitle = cast_string = ""
         crew_string = director = author = studio_string = ""
 
-        ## Year
+        # Year
 
         if 'release_date' in json_data:
             year = json_data['release_date'][:+4]
             self['year'].setText(f"{str(year)}")
 
-        ## Rating
+        # Rating
         if 'vote_average' in json_data:
             vote_average = json_data['vote_average']
             self['rating'].setText(f"{vote_average:.1f}")
 
-        ## Votes
+        # Votes
         if 'vote_count' in json_data:
             vote_count = json_data['vote_count']
             self['votes'].setText(f"{str(vote_count)}")
             self['votes_brackets'].setText(f"({str(vote_count)})")
 
-        ## Runtime
+        # Runtime
         if 'runtime' in json_data:
             runtime = json_data['runtime']
             self['runtime'].setText(f"{str(runtime)} min.")
             runtime = f", {runtime} min."
 
-        ## Country
+        # Country
         if 'production_countries' in json_data:
             for country in json_data['production_countries']:
                 country_string += f"{country['iso_3166_1']}/"
             country_string = country_string[:-1]
             self['country'].setText(f"{str(country_string)}")
 
-        ## Genre"
+        # Genre"
         if 'genres' in json_data:
             # genre_count = len(json_data['genres'])
             for genre in json_data['genres']:
                 genre_string += f"{genre['name']}, "
             self['genre'].setText(f"{str(genre_string[:-2])}")
 
-        ## Subtitle
+        # Subtitle
         if 'tagline' in json_data:
             subtitle = json_data['tagline']
             if json_data['tagline'] == "":
@@ -669,14 +671,13 @@ class tmdbScreenMovie(Screen, HelpableScreen, CoverHelper):
                 self['subtitle'].setText(f"{str(subtitle)}")
                 subtitle = f"{subtitle}\n"
 
-        ## Cast
+        # Cast
         if 'cast' in json_data_cast:
             for cast in json_data_cast['cast']:
                 castx = cast['name'] if cast['character'] == "" else f"{cast['name']} ({cast['character']})"
                 cast_string += f"{castx}\n"
 
-        ## Crew
-
+        # Crew
         if 'crew' in json_data_cast:
             for crew in json_data_cast['crew']:
                 crew_string += f"{crew['name']} ({crew['job']})\n"
@@ -690,7 +691,7 @@ class tmdbScreenMovie(Screen, HelpableScreen, CoverHelper):
             self['director'].setText(director)
             self['author'].setText(author)
 
-        ## Studio/Production Company
+        # Studio/Production Company
         if 'production_companies' in json_data:
             for studio in json_data['production_companies']:
                 studio_string += f"{studio['name']}, "
@@ -701,19 +702,19 @@ class tmdbScreenMovie(Screen, HelpableScreen, CoverHelper):
         season = year = country_string = director = studio_string = runtime = episodes = ""
 
         if not self.movie:
-            ## Year
+            # Year
             if 'first_air_date' in json_data:
                 year = json_data['first_air_date'][:+4]
                 self['year'].setText(f"{str(year)}")
 
-            ## Country
+            # Country
             if 'origin_country' in json_data:
                 for country in json_data['origin_country']:
                     country_string += f"{country}/"
                 country_string = country_string[:-1]
                 self['country'].setText(country_string)
 
-            ## Crew Director
+            # Crew Director
             if 'created_by' in json_data:
                 for directors in json_data['created_by']:
                     director += f"{directors['name']}, "
@@ -721,14 +722,14 @@ class tmdbScreenMovie(Screen, HelpableScreen, CoverHelper):
                 self['director'].setText(_("Various"))
                 self['author'].setText(director)
 
-            ## Studio/Production Company
+            # Studio/Production Company
             if 'networks' in json_data:
                 for studio in json_data['networks']:
                     studio_string += f"{studio['name']}, "
                 studio_string = studio_string[:-2]
                 self['studio'].setText(studio_string)
 
-            ## Runtime
+            # Runtime
             seasons = json_data.get("number_of_seasons", "")
             episodes = json_data.get("number_of_episodes", "")
             runtime = f"{seasons} {_('Seasons')} / {episodes} {_('Episodes')}"
@@ -741,19 +742,21 @@ class tmdbScreenMovie(Screen, HelpableScreen, CoverHelper):
                     if seasons['season_number'] >= 1:
                         season += f"{_('Season')} {seasons['season_number']} / {seasons['episode_count']} ({seasons['air_date'][:4]})\n"
 
-        ## Description
+        # Description
         description = ""
         if 'overview' in json_data:
             description = json_data['overview']
             description = f"{description}\n\n{cast_string}\n{crew_string}"
+
             self['description'].setText(description)
 
             movieinfo = f"{str(genre_string)}{str(country_string)} {str(year)} {str(runtime)}"
             fulldescription = f"{subtitle}{movieinfo}\n\n{description}\n{season}"
+
             self['fulldescription'].setText(fulldescription)
             self.text = fulldescription
 
-        ## FSK
+        # FSK
         fsk = "100"
         if self.movie:
             if 'countries' in json_data_fsk:
@@ -788,7 +791,7 @@ class tmdbScreenMovie(Screen, HelpableScreen, CoverHelper):
             callInThread(threadDownloadPage, url_backdrop, f"{tempDir}backdrop.jpg", boundFunction(self.gotBackdrop, f"{tempDir}backdrop.jpg"), self.dataError)
 
     def gotBackdrop(self, backdrop, *args, **kwargs):
-        #print("Backdrop download returned", backdrop)
+        # print("Backdrop download returned", backdrop)
         backdropSaved = f"{tempDir}backdrop.jpg"
         if not exists(backdropSaved):
             pass
@@ -857,6 +860,7 @@ class tmdbScreenMovie(Screen, HelpableScreen, CoverHelper):
             try:
                 with open(f"{saveFile}.txt", "w") as fd:
                     fd.write(self.text)
+
                 print(f"[TMDb] {saveFile}.txt created")
                 self.session.open(MessageBox, _("Movie description saved!"), type=1, timeout=3)
             except OSError:
@@ -888,20 +892,18 @@ class tmdbScreenPeople(Screen, HelpableScreen, CoverHelper):
 
         HelpableScreen.__init__(self)
         self["actions"] = HelpableActionMap(self, "TMDbActions",
-            {
-                "ok": (self.ok, _("Show details")),
-                "cancel": (self.cancel, _("Exit")),
-                "down": (self.keyDown, _("Selection down")),
-                "up": (self.keyUp, _("Selection up")),
-                "nextBouquet": (self.chDown, _("Details down")),
-                "prevBouquet": (self.chUp, _("Details up")),
-                "right": (self.keyRight, _("Page down")),
-                "left": (self.keyLeft, _("Page down")),
-                "red": (self.cancel, _("Exit")),
-                "green": (self.ok, _("Show details")),
-                "blue": (self.keyBlue),
-                "menu": (self.keyBlue, _("Setup"))
-            }, -1)
+                                            {"ok": (self.ok, _("Show details")),
+                                             "cancel": (self.cancel, _("Exit")),
+                                             "down": (self.keyDown, _("Selection down")),
+                                             "up": (self.keyUp, _("Selection up")),
+                                             "nextBouquet": (self.chDown, _("Details down")),
+                                             "prevBouquet": (self.chUp, _("Details up")),
+                                             "right": (self.keyRight, _("Page down")),
+                                             "left": (self.keyLeft, _("Page down")),
+                                             "red": (self.cancel, _("Exit")),
+                                             "green": (self.ok, _("Show details")),
+                                             "blue": (self.keyBlue),
+                                             "menu": (self.keyBlue, _("Setup"))}, -1)
 
         self['searchinfo'] = Label(_("TMDb: ") + _("Loading..."))
         self['data'] = ScrollLabel("")
@@ -939,14 +941,14 @@ class tmdbScreenPeople(Screen, HelpableScreen, CoverHelper):
             self['searchinfo'].setText(_("TMDb: ") + _("No results found, or does not respond!"))
             return
         if "cast" in json_data_cast and json_data_cast["cast"] is not None:
-			# print("json_data_cast", json_data_cast)
+            # print("json_data_cast", json_data_cast)
             for casts in json_data_cast['cast']:
                 title = date = ""
-				# print("json_data_cast - casts", casts)
+                # print("json_data_cast - casts", casts)
                 fid = str(casts['id'])
                 title = casts['name'] if casts['character'] == "" else f"{casts['name']} ({casts['character']})"
                 coverPath = casts['profile_path']
-                #cover = f"{tempDir}{fid}.jpg"
+                # cover = f"{tempDir}{fid}.jpg"
                 url_cover = f"http://image.tmdb.org/t/p/{config.plugins.tmdb.themoviedb_coversize.value}/{coverPath}"
 
                 if fid != "" or title != "":
@@ -1080,14 +1082,12 @@ class tmdbScreenPerson(Screen, HelpableScreen, CoverHelper):
 
         HelpableScreen.__init__(self)
         self["actions"] = HelpableActionMap(self, "TMDbActions",
-            {
-                "cancel": (self.cancel, _("Exit")),
-                "up": (self.keyLeft, _("Selection up")),
-                "down": (self.keyRight, _("Selection down")),
-                "left": (self.keyLeft, _("Page up")),
-                "right": (self.keyRight, _("Page down")),
-                "red": (self.cancel, _("Exit")),
-            }, -1)
+                                            {"cancel": (self.cancel, _("Exit")),
+                                             "up": (self.keyLeft, _("Selection up")),
+                                             "down": (self.keyRight, _("Selection down")),
+                                             "left": (self.keyLeft, _("Page up")),
+                                             "right": (self.keyRight, _("Page down")),
+                                             "red": (self.cancel, _("Exit"))}, -1)
 
         self['searchinfo'] = Label(_("TMDb: ") + _("Loading..."))
         self['fulldescription'] = ScrollLabel("")
@@ -1118,10 +1118,10 @@ class tmdbScreenPerson(Screen, HelpableScreen, CoverHelper):
             self['searchinfo'].setText(_("TMDb: ") + _("No results found, or does not respond!"))
             return
         if json_data_person:
-#           print("[TMDb]", json_data_person)
+            # print("[TMDb]", json_data_person)
             self.mname = json_data_person['name']
 
-            ## Personal data
+            # Personal data
             birthday = birthplace = gender = altname = rank = biography = ""
             if "birthday" in json_data_person and json_data_person['birthday'] is not None:
                 birthday = json_data_person['birthday']
@@ -1136,7 +1136,7 @@ class tmdbScreenPerson(Screen, HelpableScreen, CoverHelper):
                     gender = _("male")
                 else:
                     gender = ""
-#           print("[TMDb]", json_data_person["also_known_as"])
+            # print("[TMDb]", json_data_person["also_known_as"])
             if "also_known_as" in json_data_person and json_data_person["also_known_as"] != []:
                 altname = f"\n{_('Known as: ')}{json_data_person['also_known_as'][0]}"
                 if len(json_data_person['also_known_as']) > 1:
@@ -1148,20 +1148,20 @@ class tmdbScreenPerson(Screen, HelpableScreen, CoverHelper):
             if "biography" in json_data_person:
                 biography = json_data_person['biography']
             if biography == "":
-                    json_data_person = tmdb.People(self.id).info(language='en')
+                json_data_person = tmdb.People(self.id).info(language='en')
             if "biography" in json_data_person:
-                    biography = json_data_person['biography']
+                biography = json_data_person['biography']
             birthday = birthday if birthday == "" else _(f"Birthdate:{birthday}, ")
             birthplace = birthplace if birthplace == "" else _(f"Birthplace:{birthplace}")
             gender = gender if gender == "" else _(f", Gender:{gender}")
             print(f"[TMDb] cast person details 1 {birthday}  {birthplace}  {gender}")
             data = f"{birthday}{birthplace}{gender}{altname}{rank}\n\n{biography}\n\n"
-            ## Participated data
+            # Participated data
             json_data_person = tmdb.People(self.id).movie_credits(language=self.lang)
             json_data_person_tv = tmdb.People(self.id).tv_credits(language=self.lang)
             data_movies = []
             # Participated in movies
-#           print("[tmdbScreenPerson][tmdbsearch]json_data_person, json_data_person_tv]", json_data_person, "   ", json_data_person_tv)
+            # print("[tmdbScreenPerson][tmdbsearch]json_data_person, json_data_person_tv]", json_data_person, "   ", json_data_person_tv)
             release_date = title = character = first_air_date = name = ""
             if "cast" in json_data_person:
                 for cast in json_data_person['cast']:
@@ -1173,7 +1173,7 @@ class tmdbScreenPerson(Screen, HelpableScreen, CoverHelper):
                         character = cast['character']
                     datacm = f"{release_date} {title}  ({character})" if character != "" else f"{release_date} {title}"
                     data_movies.append(datacm)
-#               print("[tmdbScreenPerson][tmdbsearch]data_movies]", data_movies)
+            # print("[tmdbScreenPerson][tmdbsearch]data_movies]", data_movies)
             # Participated in TV
             if "cast" in json_data_person_tv:
                 for cast in json_data_person_tv['cast']:
@@ -1185,7 +1185,7 @@ class tmdbScreenPerson(Screen, HelpableScreen, CoverHelper):
                         character = cast['character']
                     datactv = f"{first_air_date} [name]  ({character}) - TV" if character else f"{first_air_date} {name} - TV"
                     data_movies.append(datactv)
-#               print("[tmdbScreenPerson][tmdbsearch]data_movies+TV]", data_movies)
+                # print("[tmdbScreenPerson][tmdbsearch]data_movies+TV]", data_movies)
 
             data_movies.sort(reverse=True)
             cast_movies = ""
@@ -1226,20 +1226,18 @@ class tmdbScreenSeason(Screen, HelpableScreen, CoverHelper):
 
         HelpableScreen.__init__(self)
         self["actions"] = HelpableActionMap(self, "TMDbActions",
-            {
-                "ok": (self.ok, _("Show details")),
-                "cancel": (self.cancel, _("Exit")),
-                "up": (self.keyUp, _("Selection up")),
-                "down": (self.keyDown, _("Selection down")),
-                "nextBouquet": (self.chDown, _("Details down")),
-                "prevBouquet": (self.chUp, _("Details up")),
-                "right": (self.keyRight, _("Page down")),
-                "left": (self.keyLeft, _("Page down")),
-                "red": (self.cancel, _("Exit")),
-                "green": (self.ok, _(" ")),
-                "blue": (self.keyBlue),
-                "menu": (self.keyBlue, _("Setup"))
-            }, -1)
+                                            {"ok": (self.ok, _("Show details")),
+                                             "cancel": (self.cancel, _("Exit")),
+                                             "up": (self.keyUp, _("Selection up")),
+                                             "down": (self.keyDown, _("Selection down")),
+                                             "nextBouquet": (self.chDown, _("Details down")),
+                                             "prevBouquet": (self.chUp, _("Details up")),
+                                             "right": (self.keyRight, _("Page down")),
+                                             "left": (self.keyLeft, _("Page down")),
+                                             "red": (self.cancel, _("Exit")),
+                                             "green": (self.ok, _(" ")),
+                                             "blue": (self.keyBlue),
+                                             "menu": (self.keyBlue, _("Setup"))}, -1)
 
         self['searchinfo'] = Label(_("TMDb: ") + _("Loading..."))
         self['data'] = ScrollLabel("")
