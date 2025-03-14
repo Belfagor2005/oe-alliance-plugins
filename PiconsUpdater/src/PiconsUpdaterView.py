@@ -282,6 +282,8 @@ class PiconsUpdaterView(ConfigListScreen, Screen):
 		try:
 			getPiconsPath().clearNotifiers()
 		except:
+			pass
+
 	def getCurrent(self):
 		cur = self['config'].getCurrent()
 		cur = cur and cur[1]
