@@ -279,8 +279,9 @@ class PiconsUpdaterView(ConfigListScreen, Screen):
 		removeEventListener(DOWNLOAD_ALL_FINISHED, self.__downloadAllFinished)
 		removeEventListener(MERGE_PICONS_FINISHED, self.processFinished)
 		removeEventListener(OPTIMIZE_PICONS_FINISHED, self.__optimizePiconsFinished)
-		getPiconsPath().clearNotifiers()
-
+		try:
+			getPiconsPath().clearNotifiers()
+		except:
 	def getCurrent(self):
 		cur = self['config'].getCurrent()
 		cur = cur and cur[1]
@@ -362,7 +363,7 @@ class PiconsUpdaterView(ConfigListScreen, Screen):
 		self.__setForegroundImageDownloadFinished()
 
 	def __downloadFinished(self, downloadsFinished):
-		progress = int(100 * (float(downloadsFinished) / float(self.totalDownloads)))
+		progress = int(100 * (float(downloadsFinished) // float(self.totalDownloads)))
 		self.session.current_dialog.setProgress(progress, _('Downloading %d of %d Picons') % (downloadsFinished, self.totalDownloads))
 
 	def __downloadAllFinished(self, downloadPicons):
@@ -389,9 +390,10 @@ class PiconsUpdaterView(ConfigListScreen, Screen):
 			MergePiconJob(self.session, self.serviceList, self.getBackgroundImagePath(), self.getForegroundImagePath(), factor, self.getCurrentSize())
 
 	def processFinished(self, *args):
+		from twisted.internet import reactor
 		printToConsole('merge finished')
 		removeEventListener(MERGE_PICONS_FINISHED, self.processFinished)
-		self.session.current_dialog.callback = self.showOptimizeFileSizeMessage
+		self.session.current_dialog.callback = lambda *args: reactor.callLater(0.3, self.showOptimizeFileSizeMessage)
 		self.session.current_dialog.close(True)
 
 	def showOptimizeFileSizeMessage(self, *args):
@@ -407,7 +409,10 @@ class PiconsUpdaterView(ConfigListScreen, Screen):
 	def __optimizePiconsFinished(self):
 		removeEventListener(OPTIMIZE_PICONS_FINISHED, self.__optimizePiconsFinished)
 		self.session.current_dialog.callback = self.showFinishedMessage
-		self.session.current_dialog.close(True)
+		try:
+			self.session.current_dialog.close(True)
+		except:
+			self.session.current_dialog.close(False)
 
 	def showFinishedMessage(self, *args):
 		self.session.open(MessageBox, self.finishedMessage, type=MessageBox.TYPE_INFO, timeout=10)

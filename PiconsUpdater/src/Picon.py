@@ -82,8 +82,9 @@ class MergePiconJob:
 		except Exception:
 			printToConsole("Error: Background '%s' is corrupted!" % self.bgPath)
 			self.__runFinished()
-
-		try:
+		if not isfile(channelPicon):
+			printToConsole("Error: ChannelPicon is not a valid file -> '%s'" % channelPicon)
+			self.__runFinished()
 			picon = Image.open(channelPicon)
 		except Exception:
 			printToConsole("Error: Picon '%s' is corrupted!" % channelPicon)
@@ -136,7 +137,7 @@ class OptimizePiconsFileSize:
 		try:
 			if len(self.executionQueueList) > 0:
 				self.optimizePiconsCount += 1
-				progress = int(100 * (float(self.optimizePiconsCount) / float(self.optimizePiconsTotal)))
+				progress = int(100 * (float(self.optimizePiconsCount) // float(self.optimizePiconsTotal)))
 				self.session.current_dialog.setProgress(progress, _('Optimize %d of %d Picons') % (self.optimizePiconsCount, self.optimizePiconsTotal))
 				self.execCommand = self.executionQueueList.popleft()
 				callInThread(self.optimizePicon)
