@@ -86,9 +86,12 @@ class MergePiconJob:
 			printToConsole("Error: ChannelPicon is not a valid file -> '%s'" % channelPicon)
 			self.__runFinished()
 			picon = Image.open(channelPicon)
+		try:
+			picon = Image.open(channelPicon)
 		except Exception:
 			printToConsole("Error: Picon '%s' is corrupted!" % channelPicon)
 			self.__runFinished()
+			return
 
 		backgroundWidth, backgroundHeight = background.size
 		piconWidth, piconHeight = picon.size
