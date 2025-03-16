@@ -6,7 +6,7 @@ from Components.ActionMap import ActionMap
 from Components.config import config, configfile, getConfigListEntry
 from Components.ConfigList import ConfigListScreen
 from Components.Pixmap import Pixmap
-from . import _, printToConsole, getPiconsPath, getPiconsTypeValue, getCurrentPicon, getConfigSizeList, getConfigBackgroundList, getBackgroundList, getPiconUrls, BOUQUET_PATH, TMP_PICON_PATH, TMP_BG_PATH, TMP_FG_PATH, TMP_PREVIEW_IMAGE_PATH, PREVIEW_IMAGE_PATH
+from . import _, clearMem, CheckInternet, printToConsole, getPiconsPath, getPiconsTypeValue, getCurrentPicon, getConfigSizeList, getConfigBackgroundList, getBackgroundList, getPiconUrls, BOUQUET_PATH, TMP_PICON_PATH, TMP_BG_PATH, TMP_FG_PATH, TMP_PREVIEW_IMAGE_PATH, PREVIEW_IMAGE_PATH
 from .DiskUtils import pathIsWriteable
 from .JobProgressView import JobProgressView
 from .DownloadPicons import DownloadPicons, DOWNLOAD_ALL_FINISHED, DOWNLOAD_FINISHED
@@ -56,14 +56,28 @@ class PiconsUpdaterView(ConfigListScreen, Screen):
 		self.onChangedEntry = []
 		ConfigListScreen.__init__(self, self.getMenuItemList(), session, self.__selectionChanged)
 		# FIXME : don't scan channels on start without background thread
-		parser = BouquetParser(BOUQUET_PATH)
-		self.serviceList = parser.getServiceList()
-		self.previewImagesToDownload = len(getPiconUrls().items())
-		self.previewImageDownloadCount = 0
-		self.backgroundImagesToDownload = len(getBackgroundList())
-		self.foregroundImagesToDownload = len(getBackgroundList())
+		"""
+		# parser = BouquetParser(BOUQUET_PATH)
+		# self.serviceList = parser.getServiceList()
+		"""
 		self.backgroundImageDownloadCount = 0
+		self.previewImageDownloadCount = 0
 		self.foregroundImageDownloadCount = 0
+		"""
+		# self.backgroundImagesToDownload = len(getBackgroundList())
+		# self.previewImagesToDownload = len(getPiconUrls().items())
+		# self.foregroundImagesToDownload = len(getBackgroundList())
+		"""
+		if CheckInternet():
+			self.internetOK = True
+			self.backgroundImagesToDownload = len(getBackgroundList())
+			self.previewImagesToDownload = len(getPiconUrls().items())
+			self.foregroundImagesToDownload = len(getBackgroundList())
+		else:
+			self.internetOK = False
+			self.backgroundImagesToDownload = 0
+			self.previewImagesToDownload = 0
+			self.foregroundImagesToDownload = 0
 		self.onLayoutFinish.append(self.layoutFinished)
 
 	def __del__(self):
@@ -173,6 +187,7 @@ class PiconsUpdaterView(ConfigListScreen, Screen):
 		self.setWindowTitle()
 		self.downloadPreviewImages()
 		self.downloadBackgroundImages()
+		clearMem()
 
 	def setWindowTitle(self):
 		self.setTitle(_('Choose Picons'))
@@ -191,22 +206,26 @@ class PiconsUpdaterView(ConfigListScreen, Screen):
 		self['previewImage'].instance.setScale(1)
 
 	def getBackgroundImagePath(self):
-		background = self.getCurrentBackground()
-		if background:
-			backgroundUrl = background['bg']
-			localPiconBgPath = join(TMP_BG_PATH, basename(backgroundUrl))
-			return localPiconBgPath
-		else:
-			return None
+		try:
+			background = self.getCurrentBackground()
+			if background:
+				backgroundUrl = background['bg']
+				localPiconBgPath = join(TMP_BG_PATH, basename(backgroundUrl))
+				return localPiconBgPath
+		except Exception as e:
+			printToConsole("getBackgroundImagePath error: '%s'" % e)
+			return ''
 
 	def getForegroundImagePath(self):
-		background = self.getCurrentBackground()
-		if background and 'fg' in background:
-			foregroundUrl = background['fg']
-			localPiconFgPath = join(TMP_FG_PATH, basename(foregroundUrl))
-			return localPiconFgPath
-		else:
-			return None
+		try:
+			background = self.getCurrentBackground()
+			if background and 'fg' in background:
+				foregroundUrl = background['fg']
+				localPiconFgPath = join(TMP_FG_PATH, basename(foregroundUrl))
+				return localPiconFgPath
+			return ''
+		except:
+			return ''
 
 	def showBackgroundPicture(self):
 		if self.getCurrentBackgroundList() is not None:
@@ -234,9 +253,12 @@ class PiconsUpdaterView(ConfigListScreen, Screen):
 		if bgimagepath and self.getCurrentBackgroundList() is not None and isfile(bgimagepath) is False:
 			self.session.open(MessageBox, _('Background Image not downloaded yet, please wait some seconds and try again.'), type=MessageBox.TYPE_INFO, timeout=10)
 			return
+
 		addEventListener(DOWNLOAD_ALL_FINISHED, self.__downloadAllFinished)
 		self.session.open(JobProgressView, 'Download Progress', msgBoxID='startDownload')
 		self.totalDownloads = 1
+
+		self.getBouquetParser()
 
 		piconUrl = self.getCurrentPiconUrl()
 		if piconUrl is not None:
@@ -246,6 +268,10 @@ class PiconsUpdaterView(ConfigListScreen, Screen):
 				makedirs(tmpPiconsPath, 493)
 			downloadPicons = DownloadPicons(self.serviceList, piconUrl, tmpPiconsPath, self.getCurrentPiconNameType())
 			self.totalDownloads = downloadPicons.totalDownloads
+
+	def getBouquetParser(self):
+		parser = BouquetParser(BOUQUET_PATH)
+		self.serviceList = parser.getServiceList()
 
 	def okClicked(self):
 		cur = self.getCurrent()
@@ -258,7 +284,6 @@ class PiconsUpdaterView(ConfigListScreen, Screen):
 		for x in self['config'].list:
 			if len(x) > 1:
 				x[1].cancel()
-
 		self.close()
 
 	def save(self):
@@ -372,13 +397,15 @@ class PiconsUpdaterView(ConfigListScreen, Screen):
 		removeEventListener(DOWNLOAD_FINISHED, self.__downloadFinished)
 		removeEventListener(DOWNLOAD_ALL_FINISHED, self.__downloadAllFinished)
 		printToConsole('Picons downloads finished!')
+		self.clearFolderPicons()
+		"""
 		piconsNotFoundMessage = "Picons not found for '%s' channels" % len(downloadPicons.channelsNotFoundList)
 		channelsNotFoundFile = open(TMP_PICON_PATH + '/channelsNotFoundList.txt', 'w')
 		channelsNotFoundFile.write(piconsNotFoundMessage + '\n\n')
 		for channel in downloadPicons.channelsNotFoundList:
 			channelsNotFoundFile.write(basename(channel[1]) + ';' + channel[0] + ';' + channel[1] + '\n')
-
 		channelsNotFoundFile.close()
+		"""
 		self.finishedMessage = _('Process Finished.\n%s Picons downloaded\n%s Picons not found') % (str(downloadPicons.downloadsFinished), str(downloadPicons.downloadsFailed))
 		printToConsole(self.finishedMessage)
 		self.session.current_dialog.callback = self.__mergePicons
@@ -388,14 +415,30 @@ class PiconsUpdaterView(ConfigListScreen, Screen):
 		addEventListener(MERGE_PICONS_FINISHED, self.processFinished)
 		background = self.getCurrentBackground()
 		if background:
-			factor = background['factor']
+			try:
+				factor = background['factor']
+			except:
+				factor = 1
 			MergePiconJob(self.session, self.serviceList, self.getBackgroundImagePath(), self.getForegroundImagePath(), factor, self.getCurrentSize())
 
+	def clearFolderPicons(self):
+		try:
+			if config.plugins.PiconsUpdater.clearpicons.getValue():
+				import shutil
+				shutil.rmtree(getPiconsPath().getValue())
+				printToConsole('clearFolderPicons Finished!')
+			if isdir(getPiconsPath().getValue()) is False:
+				makedirs(getPiconsPath().getValue(), 509)
+				printToConsole('FolderPicons Created.')
+		except Exception as er:
+			printToConsole("[ERROR] clearFolderPicons: '%s'" % er)
+
 	def processFinished(self, *args):
-		from twisted.internet import reactor
+		# from twisted.internet import reactor
 		printToConsole('merge finished')
 		removeEventListener(MERGE_PICONS_FINISHED, self.processFinished)
-		self.session.current_dialog.callback = lambda *args: reactor.callLater(0.3, self.showOptimizeFileSizeMessage)
+		# self.session.current_dialog.callback = lambda *args: reactor.callLater(0.1, self.showOptimizeFileSizeMessage)  # this fix crash on modal screen
+		self.current_dialog.callback = self.__showOptimizeFileSizeMessage
 		self.session.current_dialog.close(True)
 
 	def showOptimizeFileSizeMessage(self, *args):
