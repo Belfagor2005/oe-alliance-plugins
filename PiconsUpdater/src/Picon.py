@@ -1,10 +1,12 @@
 from _collections import deque
 from os.path import isfile
-from PIL import Image
 from subprocess import call
 from twisted.internet.reactor import callInThread
-
+from os import system
 from Components.config import config
+
+from PIL import Image
+from PIL.Image import LANCZOS as ANTIALIAS
 
 from .BouquetParser import getChannelKey
 from .DiskUtils import getFiles, getCleanFileName
@@ -15,6 +17,8 @@ from .import printToConsole, getPiconsPath, getTmpLocalPicon, _  # for localized
 
 MERGE_PICONS_FINISHED = 'mergePiconsFinished'
 OPTIMIZE_PICONS_FINISHED = 'optimizePiconsFinished'
+system('opkg update')
+system('opkg install pngquant')
 
 
 class MergeVO:
@@ -85,19 +89,17 @@ class MergePiconJob:
 		if not isfile(channelPicon):
 			printToConsole("Error: ChannelPicon is not a valid file -> '%s'" % channelPicon)
 			self.__runFinished()
-			picon = Image.open(channelPicon)
 		try:
 			picon = Image.open(channelPicon)
 		except Exception:
 			printToConsole("Error: Picon '%s' is corrupted!" % channelPicon)
 			self.__runFinished()
-			return
 
 		backgroundWidth, backgroundHeight = background.size
 		piconWidth, piconHeight = picon.size
 		scaleWidth = int(piconWidth * self.factor)
 		scaleHeight = int(piconHeight * self.factor)
-		picon = picon.resize((scaleWidth, scaleHeight), Image.LANCZOS)
+		picon = picon.resize((scaleWidth, scaleHeight), ANTIALIAS)
 		centerPoint = ((backgroundWidth - scaleWidth) // 2, (backgroundHeight - scaleHeight) // 2)
 		if config.plugins.PiconsUpdater.mirror_effect.getValue():
 			picon = add_reflection(picon)
@@ -111,7 +113,7 @@ class MergePiconJob:
 			self.__runFinished()
 
 		if piconWidth != self.size[0] or piconHeight != self.size[1]:
-			background.thumbnail(self.size, Image.LANCZOS)
+			background.thumbnail(self.size, ANTIALIAS)
 		else:
 			background.thumbnail(self.size)
 		background.save(targetPicon)
@@ -144,6 +146,8 @@ class OptimizePiconsFileSize:
 				self.session.current_dialog.setProgress(progress, _('Optimize %d of %d Picons') % (self.optimizePiconsCount, self.optimizePiconsTotal))
 				self.execCommand = self.executionQueueList.popleft()
 				callInThread(self.optimizePicon)
+			else:
+				dispatchEvent(OPTIMIZE_PICONS_FINISHED)
 		except Exception as e:
 			self.__clearExecutionQueueList()
 			printToConsole('OptimizePicons execQueue exception:\n' + str(e))
