@@ -6,6 +6,7 @@ from urllib.request import urlopen
 from Components.Language import language
 from Components.config import config
 from Tools.Directories import resolveFilename, SCOPE_PLUGINS
+from os.path import join
 
 PLUGIN_PATH = resolveFilename(SCOPE_PLUGINS, 'Extensions/PiconsUpdater')
 CONFIG_FILE = 'https://raw.githubusercontent.com/gigablue-support-org/templates_PiconsUpdater/master/config.json'
@@ -35,40 +36,97 @@ def printToConsole(msg):
 
 PICON_TYPE_NAME = 0
 PICON_TYPE_KEY = 1
-POSSIBLE_PICONS_SIZE = ('60x40', '100x60', '130x80', '220x132')
+POSSIBLE_PICONS_SIZE = (
+	('50x30', 'MiniPicons (50x30)'),
+	('100x60', 'InfobarPicons (100x60)'),
+	('130x80', 'HDGlass (130x80)'),
+	('220x132', 'xPicons (220x132)'),
+	('400x240', 'ZZPicons (400x240)'),
+	('417x250', 'ZZZPicons (417x250)')
+)
 BOUQUET_PATH = '/etc/enigma2'
 TMP_PICON_PATH = '/tmp/piconsupdater'
-TMP_BG_PATH = TMP_PICON_PATH + '/bgs'
-TMP_FG_PATH = TMP_PICON_PATH + '/fgs'
-TMP_PREVIEW_IMAGE_PATH = TMP_PICON_PATH + '/preview'
-PREVIEW_IMAGE_PATH = PLUGIN_PATH + '/previewimage/default.png'
+TMP_BG_PATH = join(TMP_PICON_PATH, 'bgs')
+TMP_FG_PATH = join(TMP_PICON_PATH, 'fgs')
+TMP_PREVIEW_IMAGE_PATH = join(TMP_PICON_PATH, 'preview')
+PREVIEW_IMAGE_PATH = join(PLUGIN_PATH, 'previewimage', 'default.png')
 DEFAULT_PICON_PATH = '/usr/share/enigma2/picon'
+ALTERN_PICON_PATH = [
+	'/usr/share/enigma2/picon/',
+	'/media/usb/picon/',
+	'/media/hdd/picon/',
+	'/picon/',
+	'/data/picon/',
+	'/media/mmc/picon/',
+	'/media/sdcard/picon/',
+	'/media/hdd/XPicons/picon/',
+	'/media/hdd/ZZPicons/picon/',
+	'/media/usb/XPicons/picon/',
+	'/media/usb/ZZPicons/picon/',
+	'/usr/share/enigma2/XPicons/picon/',
+	'/usr/share/enigma2/ZZPicons/picon/',
+	'user_defined'
+]
 
 
-def byteify(input):
-	if isinstance(input, dict):
-		return {byteify(key): byteify(value) for key, value in input.items()}
-	elif isinstance(input, list):
-		return [byteify(element) for element in input]
+def byteify(data):
+	if isinstance(data, dict):
+		return {byteify(key): byteify(value) for key, value in data.items()}
+	elif isinstance(data, list):
+		return [byteify(element) for element in data]
 	else:
-		return input
+		return data
+
+
+def CheckInternet(opt=3):
+	global verInt
+	sock = False
+	checklist = [
+		('8.8.4.4', 53),
+		('8.8.8.8', 53),
+		('www.google.com', 80),
+		('www.google.com', 443)
+	]
+	srv = checklist[opt]
+	try:
+		import socket
+		socket.setdefaulttimeout(0.5)
+		socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect(srv)
+		sock = True
+		if verInt in (0, 2):
+			printToConsole('-Internet OK')
+			verInt = 1
+	except:
+		sock = False
+		if verInt in (0, 1):
+			printToConsole('-Internet KO')
+			verInt = 2
+
+	return sock
 
 
 def getBackgroundList():
-	if not hasattr(getBackgroundList, 'config'):
-		configFile = None
-		try:
-			configFile = urlopen(CONFIG_FILE)
-		except HTTPError as e:
-			printToConsole(_("Error accessing the server!\nHTTPError: %s" % str(e)))
-		except URLError as e:
-			printToConsole(_("Error accessing the server!\nURLError: %s" % str(e)))
-		if configFile:
-			configFile.headers['content-type'].split('charset=')[-1]
-			ucontent = configFile.read()
-			getBackgroundList.config = byteify(loads(ucontent))
-			configFile.close()
-	return getBackgroundList.config
+	if not CheckInternet():
+		return []
+	try:
+		if not hasattr(getBackgroundList, 'config'):
+			configFile = None
+			try:
+				configFile = urlopen(CONFIG_FILE)
+			except HTTPError as e:
+				printToConsole(_("Error accessing the server!\nHTTPError: %s" % str(e)))
+			except URLError as e:
+				printToConsole(_("Error accessing the server!\nURLError: %s" % str(e)))
+			if configFile:
+				configFile.headers['content-type'].split('charset=')[-1]
+				ucontent = configFile.read()
+				getBackgroundList.config = byteify(loads(ucontent))
+				configFile.close()
+		return getBackgroundList.config
+	except:
+		return []
+
+	return
 
 
 def getPiconUrls():
@@ -117,7 +175,7 @@ def getPiconsTypeValue():
 
 
 def getTmpLocalPicon(piconName):
-	return TMP_PICON_PATH + '/' + getPiconsTypeValue() + '/' + piconName + '.png'
+	return join(TMP_PICON_PATH, getPiconsTypeValue(), piconName + '.png')
 
 
 __all__ = ['_', 'printToConsole', 'getPiconsPath']
