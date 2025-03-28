@@ -1179,39 +1179,20 @@ class pm_conf(ConfigListScreen, Screen, HelpableScreen):
 						x[1].cancel()
 
 			self.close(
-				creator=self.creator,
-				size=self.size,
-				bit=self.bit,
-				server=self.server,
-				save_flag=True,
-				reload_picons=reload_picons,
-				alter=self.alter
+				self.creator,
+				self.size,
+				self.bit,
+				self.server,
+				True,
+				reload_picons,
+				self.alter
 			)
 
 		except Exception as e:
 			print(f"Error saving piconmanager configuration: {e}")
-			self.close(
-				creator=self.creator,
-				size=self.size,
-				bit=self.bit,
-				server=self.server,
-				save_flag=False,
-				reload_picons=False
-			)
 
 	def cancel(self):
-		try:
-			self.close(
-				creator=self.creator,
-				size=self.size,
-				bit=self.bit,
-				server=self.server,
-				save_flag=False,
-				reload_picons=False
-			)
-		except Exception as e:
-			print(f"Error during cancel operation: {e}")
-			self.close()
+		self.close(self.creator, self.size, self.bit, self.server, False, False)
 
 
 def main(session, **kwargs):
