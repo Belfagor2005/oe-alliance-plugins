@@ -4,8 +4,9 @@ try:
 	import simplejson
 except Exception as e:
 	import json as simplejson
+	print(e)
 from six.moves.urllib.request import urlopen
-from .plugin import L4logE
+# from .plugin import L4logE
 
 
 class YMC:
@@ -23,9 +24,8 @@ class YMC:
 		try:
 			content, resp = self.Urlget("http://%s/YamahaExtendedControl/v1/netusb/getPlayInfo" % self.IP)
 			return simplejson.loads(content) if resp == 200 else {}
-
 		except Exception as e:
-			L4logE("YMC Error: %s" % e)
+			print(f"[YMC] Error in getPlayInfo: {e}")
 			return {}
 
 	def getStatus(self):
@@ -33,5 +33,5 @@ class YMC:
 			content, resp = self.Urlget("http://%s/YamahaExtendedControl/v1/main/getStatus" % self.IP)
 			return simplejson.loads(content) if resp == 200 else {}
 		except Exception as e:
-			L4logE("YMC Error: %s" % e)
+			print(f"[YMC] Error in getStatus: {e}")
 			return {}
