@@ -834,6 +834,9 @@ class PiconManagerScreen(Screen, HelpableScreen):
 
 	def downloadPicons(self):
 		no_drive = False
+		self.countload = 0
+		self.counterrors = 0
+
 		if self['list'].getCurrent():
 			if not isdir(self.picondir):
 				txt = f"{self.picondir}\n{_('is not installed.')}"
@@ -853,9 +856,6 @@ class PiconManagerScreen(Screen, HelpableScreen):
 
 			self['piconpath2'].setText(self.piconfolder)
 			urls = []
-			self.countload = 0
-			self.counterrors = 0
-
 			if int(self.countchlist) > 0 and not self.keyLocked and self['list'].getCurrent():
 				if len(self['list'].getCurrent()[0]) >= 2:
 					with open("/tmp/picon_dl_err", "w") as f:
@@ -891,6 +891,8 @@ class PiconManagerScreen(Screen, HelpableScreen):
 
 				current_value = self.countload + self.counterrors
 				self.activityslider.setValue(current_value)
+				self['picondownload'].setText(_("Picon loaded:") + f" {self.countload}")
+				self['piconerror'].setText(_("Picons not found: ") + " %s" % self.counterrors)
 
 			for url, path in urls:
 				d = ds.run(
@@ -909,13 +911,13 @@ class PiconManagerScreen(Screen, HelpableScreen):
 					MessageBox,
 					message,
 					MessageBox.TYPE_INFO,
-					timeout=5
+					timeout=10
 				)
 				reactor.callFromThread(self.cleanup_after_download)
 
 			defer.DeferredList(downloads).addCallback(final_update)
 
-	def threadDownloadPage(self, url, file_path, *args, **kwargs):  # Mantenere esattamente 3 parametri
+	def threadDownloadPage(self, url, file_path, *args, **kwargs):
 		try:
 			if not access(dirname(file_path), W_OK):
 				raise OSError(errno.EROFS, "Filesystem read-only", file_path)
@@ -1000,7 +1002,7 @@ class PiconManagerScreen(Screen, HelpableScreen):
 				if lena < len(self.chlist):
 					lena += 1
 				else:
-					self['piconerror'].setText(_("Not found Picons: ") + " %s" % self.counterrors)
+					self['piconerror'].setText(_("Picons not found: ") + " %s" % self.counterrors)
 					self['piconpath2'].setText(_("Download finished !"))
 
 	def dataError2(self, error=None):
