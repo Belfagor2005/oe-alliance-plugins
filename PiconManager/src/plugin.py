@@ -24,8 +24,8 @@ from shutil import rmtree
 from random import choice
 from datetime import date
 from re import S, I, search
-from os import mkdir, makedirs, statvfs, remove, W_OK, access
-from os.path import exists, isdir, basename, join, dirname
+from os import mkdir, makedirs, statvfs, remove
+from os.path import exists, isdir, basename, join
 
 # Third-party
 from requests import get, exceptions
@@ -270,13 +270,17 @@ class PiconManagerScreen(Screen, HelpableScreen):
 		self['key_yellow'] = Label(_("Select path"))
 		self['key_blue'] = Label(_("Create folder"))
 		self['picon'] = Pixmap()
-		self["OkCancelActions"] = HelpableActionMap(self, "OkCancelActions",
+		self["OkCancelActions"] = HelpableActionMap(
+			self, "OkCancelActions",
 			{
 				"ok": (self.keyOK, _("Show random Picon")),
 				"cancel": (self.keyCancel, _("Exit")),
-			}, -2)
+			},
+			-2
+		)
 
-		self["SetupActions"] = HelpableActionMap(self, "SetupActions",
+		self["SetupActions"] = HelpableActionMap(
+			self, "SetupActions",
 			{
 				"1": (self.sel_creator_back, _("Previous picon creator")),
 				"3": (self.sel_creator_next, _("Next picon creator")),
@@ -286,7 +290,9 @@ class PiconManagerScreen(Screen, HelpableScreen):
 				"9": (self.sel_bit_next, _("Next color depth")),
 			}
 		)
-		self["EPGSelectActions"] = HelpableActionMap(self, "EPGSelectActions",
+
+		self["EPGSelectActions"] = HelpableActionMap(
+			self, "EPGSelectActions",
 			{
 				"menu": (self.settings, _("More selections")),
 				"nextService": (self.sel_satpos_next, _("Next Group")),
@@ -296,7 +302,9 @@ class PiconManagerScreen(Screen, HelpableScreen):
 				"timerAdd": (self.downloadPicons, _("Download picons")),
 				"yellow": (self.keyYellow, _("Select path")),
 				"blue": (self.changePiconName, _("Create folder")),
-			}, -2)
+			},
+			-2
+		)
 		self.channelMenuList = MenuList([], enableWrapAround=True, content=eListboxPythonMultiContent)
 		font, size = parameters.get("PiconManagerListFont", ('Regular', 22))
 		self.channelMenuList.l.setFont(0, gFont(font, size))
@@ -645,9 +653,16 @@ class PiconManagerScreen(Screen, HelpableScreen):
 				ret.append((x, _("%s") % x))
 		return ret
 
-	def makeList(self, creator="All", size="All", bit="All",
-				 server=config.plugins.piconmanager.server.value,
-				 update=True, reload_picons=False, alter=0):
+	def makeList(
+			self,
+			creator="All",
+			size="All",
+			bit="All",
+			server=config.plugins.piconmanager.server.value,
+			update=True,
+			reload_picons=False,
+			alter=0):
+
 		"""Filter and display the picon list based on specified criteria.
 
 		Args:
@@ -715,12 +730,19 @@ class PiconManagerScreen(Screen, HelpableScreen):
 			if self.prev_sel != self.picon_list_file:
 				self.prev_sel = self.picon_list_file
 				with open(self.picon_list_file) as f:
-					self.picon_files = f.readlines()
-			self.picon_name = choice(self.picon_files)
-			downloadPiconUrl = "%s%s/%s" % (self.server_url, self.cur_selected_dir, self.picon_name)
-			self.downloadPiconPath = "%s%s.png" % (self.piconTempDir, self.auswahl)
-			self.keyLocked = False
-			callInThread(self.threadDownloadPage, downloadPiconUrl, self.downloadPiconPath, self.showPiconFile, self.dataError)
+					# Strip whitespace and filter out empty lines
+					self.picon_files = [line.strip() for line in f.readlines() if line.strip()]
+			if self.picon_files:
+				self.picon_name = choice(self.picon_files)
+				# URL-encode the picon name to handle special characters
+				encoded_picon_name = quote(self.picon_name)
+				downloadPiconUrl = f"{self.server_url}{self.cur_selected_dir}/{encoded_picon_name}"
+				self.downloadPiconPath = f"{self.piconTempDir}{self.auswahl}.png"
+				self.keyLocked = False
+				callInThread(self.threadDownloadPage, downloadPiconUrl, self.downloadPiconPath, self.showPiconFile, self.dataError)
+			else:
+				print("[PiconManager] Empty picon list file")
+				self['piconerror'].setText(_("No picons available in selected list"))
 
 	def keyCancel(self):
 		config.plugins.piconmanager.savetopath.value = self.picondir
@@ -917,21 +939,42 @@ class PiconManagerScreen(Screen, HelpableScreen):
 
 			defer.DeferredList(downloads).addCallback(final_update)
 
-	def threadDownloadPage(self, url, file_path, *args, **kwargs):
-		try:
-			if not access(dirname(file_path), W_OK):
-				raise OSError(errno.EROFS, "Filesystem read-only", file_path)
+	def showPiconFile(self, picPath, data=None):
+		if picPath and exists(picPath):
+			try:
+				self["picon"].instance.setPixmapFromFile(picPath)
+				self["picon"].show()
+			except Exception as e:
+				print(f"[PiconManager] Error loading picon: {str(e)}")
+				errorWrite(f"Failed to load {picPath}: {str(e)}")
+				self["picon"].hide()
+		else:
+			print(f"[PiconManager] Picon file not found: {picPath}")
+			self["picon"].hide()
 
-			import requests
-			response = requests.get(url, stream=True, timeout=30)
+	def threadDownloadPage(self, url, file_path, success_callback, error_callback):
+		try:
+			response = get(url, stream=True, timeout=10)
 			response.raise_for_status()
-			with open(file_path, "wb") as f:
+			with open(file_path, 'wb') as f:
 				for chunk in response.iter_content(chunk_size=8192):
 					if chunk:
 						f.write(chunk)
-			return True
+			# Verify the downloaded file is a valid PNG
+			if not self.is_valid_png(file_path):
+				raise ValueError("Invalid PNG file")
+			reactor.callFromThread(success_callback, file_path, None)
 		except Exception as e:
-			print(f"[ERROR] Download failed: {str(e)}")
+			error_msg = f"Download failed: {url} - {str(e)}"
+			errorWrite(error_msg)
+			reactor.callFromThread(error_callback, error_msg)
+
+	def is_valid_png(self, file_path):
+		try:
+			with open(file_path, 'rb') as f:
+				header = f.read(8)
+				return header == b'\x89PNG\r\n\x1a\n'
+		except:
 			return False
 
 	def cleanup_after_download(self):
@@ -1030,12 +1073,6 @@ class PiconManagerScreen(Screen, HelpableScreen):
 		errorWrite(str(len(self.auswahl)) + " - " + str(self.auswahl) + "\n" + str(error) + "\n")
 		self["picon"].hide()
 
-	def showPiconFile(self, picPath, data=None):
-		if exists(picPath):
-			if picPath is not None:
-				self["picon"].instance.setPixmapFromFile(picPath)
-				self["picon"].show()
-
 
 class PiconManagerFolderScreen(Screen):
 	skin = """
@@ -1051,23 +1088,24 @@ class PiconManagerFolderScreen(Screen):
 
 	def __init__(self, session, initDir, plugin_path=None):
 		Screen.__init__(self, session)
-
 		if not initDir or not isdir(initDir):
 			initDir = "/usr/share/enigma2/"
-
 		self["folderlist"] = FileList(initDir, inhibitMounts=False, inhibitDirs=False, showMountpoints=False, showFiles=False)
 		self["media"] = Label()
-		self["actions"] = ActionMap(["WizardActions", "DirectionActions", "ColorActions", "EPGSelectActions"],
-		{
-			"back": self.cancel,
-			"left": self.left,
-			"right": self.right,
-			"up": self.up,
-			"down": self.down,
-			"ok": self.ok,
-			"green": self.green,
-			"red": self.cancel
-		}, -1)
+		self["actions"] = ActionMap(
+			["WizardActions", "DirectionActions", "ColorActions", "EPGSelectActions"],
+			{
+				"back": self.cancel,
+				"left": self.left,
+				"right": self.right,
+				"up": self.up,
+				"down": self.down,
+				"ok": self.ok,
+				"green": self.green,
+				"red": self.cancel
+			},
+			-1
+		)
 		self.title = _("Choose Picon folder")
 		try:
 			self["title"] = StaticText(self.title)
@@ -1137,17 +1175,24 @@ class pm_conf(ConfigListScreen, Screen, HelpableScreen):
 		self["key_green"] = Label(_("OK"))
 		self["key_red"] = Label(_("Cancel"))
 
-		self["SetupActions"] = HelpableActionMap(self, "SetupActions",
+		self["SetupActions"] = HelpableActionMap(
+			self, "SetupActions",
 			{
 				"cancel": (self.cancel, _("Cancel")),
 				"ok": (self.save, _("OK and exit")),
-			}, -1)
+			},
+			-1
+		)
 
-		self["ColorActions"] = HelpableActionMap(self, "ColorActions",
+		self["ColorActions"] = HelpableActionMap(
+			self, "ColorActions",
 			{
 				"green": (self.save, _("OK and exit")),
 				"red": (self.cancel, _("Cancel")),
-			}, -1)
+			},
+			-1
+		)
+
 		self.onLayoutFinish.append(self.load_list)
 
 	def load_list(self):
