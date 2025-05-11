@@ -675,16 +675,19 @@ class PiconManagerScreen(Screen, HelpableScreen):
 		return ret
 
 	def makeList(
-			self,
-			creator="All",
-			size="All",
-			bit="All",
-			server=config.plugins.piconmanager.server.value,
-			update=True,
-			reload_picons=False,
-			alter=0):
+		self,
+		creator="All",
+		size="All",
+		bit="All",
+		server=config.plugins.piconmanager.server.value,
+		update=True,
+		reload_picons=False,
+		alter=0
+	):
 
-		"""Filter and display the picon list based on specified criteria.
+		"""
+		Filter and display the picon list based on specified criteria.
+
 		Args:
 			creator: Filter by creator name ('All' for no filter)
 			size: Filter by size ('All' for no filter)
@@ -718,11 +721,13 @@ class PiconManagerScreen(Screen, HelpableScreen):
 				except (ValueError, IndexError):
 					continue
 
-			if ((art != "All" and item[3][3] != art) or
-					(creator != "All" and item[3][0] != creator) or
-					(size != "All" and item[3][1] != size) or
-					(bit != "All" and item[3][2] != bit)):
-				continue
+				art_match = (art == "All" or item[3][3] == art)
+				creator_match = (creator == "All" or item[3][0] == creator)
+				size_match = (size == "All" or item[3][1] == size)
+				bit_match = (bit == "All" or item[3][2] == bit)
+
+				if not (art_match and creator_match and size_match and bit_match):
+					continue
 
 			new_list.append(item)
 
@@ -812,8 +817,11 @@ class PiconManagerScreen(Screen, HelpableScreen):
 	def url2Str(self, url):
 		try:
 			from urllib.request import Request, urlopen
-			header = {'User-Agent': 'Mozilla/5.0 (X11; U; Linux x86_64; en-US; rv:1.9.2.6) Gecko/20100627 Firefox/3.6.6',
-					  'Accept-Charset': 'utf-8;q=0.7,*;q=0.7', 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'}
+			header = {
+				'User-Agent': 'Mozilla/5.0 (X11; U; Linux x86_64; en-US; rv:1.9.2.6) Gecko/20100627 Firefox/3.6.6',
+				'Accept-Charset': 'utf-8;q=0.7,*;q=0.7',
+				'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+			}
 			searchrequest = Request(url, None, header)
 			return urlopen(searchrequest).read()
 		except:
@@ -1142,15 +1150,15 @@ class PicRemoverScreen(Screen):
 				self["info"].setText(_("Not valid path!"))
 				return
 
-			piconsliste = [f for f in listdir(self.picon_path) if f.lower().endswith('.png') and self.is_valid_picon_name(f)]
+			picon_list = [f for f in listdir(self.picon_path) if f.lower().endswith('.png') and self.is_valid_picon_name(f)]
 			self.channel_list = self.buildChannellist()
 			self.unused_picons = []
 			channel_list_picon = {channel[0].replace(':', '_').rstrip('_') + '.png' for channel in self.channel_list}
-			self.unused_picons = [picon for picon in piconsliste if picon not in channel_list_picon]
+			self.unused_picons = [picon for picon in picon_list if picon not in channel_list_picon]
 			count = len(self.unused_picons)
 			self['piconcount'].setText(_("Picons to be deleted: {}").format(count))
 			self._update_ui()
-			print(f"[DEBUG] Channels: {len(self.channel_list)} | Picons found: {len(piconsliste)}")
+			print(f"[DEBUG] Channels: {len(self.channel_list)} | Picons found: {len(picon_list)}")
 			print(f"[DEBUG] Picons unused: {count}")
 		except Exception as e:
 			self["info"].setText(_("Error: ") + str(e))
@@ -1249,6 +1257,7 @@ class PicRemoverScreen(Screen):
 			self["list"].setList(templated_list)
 			count_text = _("Picons founds: {}").format(len(templated_list))
 			self["info"].setText(count_text)
+			self.showPic()
 			print(f"[DEBUG] Picons not used: {len(templated_list)}")
 		except Exception as e:
 			print(f"UI update error: {str(e)}")
