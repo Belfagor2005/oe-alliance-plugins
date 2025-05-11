@@ -31,7 +31,7 @@ from random import choice
 from datetime import date
 from re import S, I, search, sub, match
 from os import mkdir, makedirs, statvfs, remove, listdir
-from os.path import exists, isfile, isdir, basename, join
+from os.path import exists, isdir, basename, join
 
 # Third-party
 from requests import get, exceptions
@@ -69,7 +69,7 @@ from skin import parameters
 from ServiceReference import ServiceReference
 
 from .piconnames import reducedName, getInteroperableNames  # check for by-name-picons that dont fit with VTi Syntax (Picon Buddy Mode)
-from . import _, DEFAULT_PICON_PATH, getConfigPathList
+from . import _, DEFAULT_PICON_PATH, ALTERN_PICON_PATH, getConfigPathList
 
 # constants
 pname = _("PiconManager")
@@ -86,13 +86,25 @@ server_choices = [("http://picons.vuplus-support.org/", "VTi: vuplus-support.org
 
 config.plugins.piconmanager = ConfigSubsection()
 config.plugins.piconmanager.savetopath = ConfigSelection(default=DEFAULT_PICON_PATH, choices=getConfigPathList())
-config.plugins.piconmanager.piconname = ConfigText(default="picon", fixed_size=False)
+# config.plugins.piconmanager.piconname = ConfigText(default="picon", fixed_size=False)
 config.plugins.piconmanager.selected = ConfigText(default="All", fixed_size=False)
 config.plugins.piconmanager.spicon = ConfigText(default="", fixed_size=False)
 config.plugins.piconmanager.saving = ConfigYesNo(default=True)
 config.plugins.piconmanager.debug = ConfigYesNo(default=False)
 config.plugins.piconmanager.server = ConfigSelection(default=server_choices[0][0], choices=server_choices)
 config.plugins.piconmanager.alter = ConfigInteger(default=365, limits=(0, 1000))
+
+
+def create_picon_directory(path):
+	path = path.value
+	if not exists(path):
+		print(f"[DEBUG] Creating directory: {path}")
+		makedirs(path)
+	else:
+		print(f"[DEBUG] Directory already exists: {path}")
+
+
+create_picon_directory(config.plugins.piconmanager.savetopath)
 
 
 def ListEntry(entry):
@@ -231,10 +243,10 @@ class PiconManagerScreen(Screen, HelpableScreen):
 		Screen.__init__(self, session)
 		HelpableScreen.__init__(self)
 		self.server_url = config.plugins.piconmanager.server.value
-		self.piconname = config.plugins.piconmanager.piconname.value
+		# self.piconname = config.plugins.piconmanager.piconname.value
 		self.picondir = config.plugins.piconmanager.savetopath.value
 		self.alter = config.plugins.piconmanager.alter.value
-		self.piconfolder = "%s%s/" % (self.picondir, self.piconname)
+		self.piconfolder = "%s/" % self.picondir
 		self.picon_name = ""
 		self.piconlist = []
 		self.tried_mirrors = []
@@ -772,8 +784,8 @@ class PiconManagerScreen(Screen, HelpableScreen):
 	def keyCancel(self):
 		config.plugins.piconmanager.savetopath.value = self.picondir
 		config.plugins.piconmanager.savetopath.save()
-		config.plugins.piconmanager.piconname.value = self.piconname
-		config.plugins.piconmanager.piconname.save()
+		# config.plugins.piconmanager.piconname.value = self.piconname
+		# config.plugins.piconmanager.piconname.save()
 		self.channelMenuList.setList([])
 		try:
 			rmtree(self.piconTempDir)
@@ -787,25 +799,26 @@ class PiconManagerScreen(Screen, HelpableScreen):
 	def selectedMediaFile(self, res):
 		if res is not None:
 			self.piconfolder = res
-			self.piconname = res.split("/")[-2]
+			# self.piconname = res.split("/")[-2]
 			self['piconpath2'].setText(self.piconfolder)
 
 	def changeDrive(self):
-		if search("/usr/share/enigma2/", self.piconfolder, S | I):
-			self.picondir = "/media/usb/"
-		elif search("/media/usb/", self.piconfolder, S | I):
-			self.picondir = "/media/hdd/"
-		elif search("/media/hdd/", self.piconfolder, S | I):
-			self.picondir = "/usr/share/enigma2/"
-		self.piconfolder = "%s%s/" % (self.picondir, self.piconname)
-		self['piconpath2'].setText(self.piconfolder)
+		current = self.piconfolder.rstrip("/")
+		try:
+			idx = ALTERN_PICON_PATH.index(current)
+			idx = (idx + 1) % len(ALTERN_PICON_PATH)
+		except ValueError:
+			idx = 0
+
+		self.picondir = ALTERN_PICON_PATH[idx]
+		self.piconfolder = self.picondir + "/"
+		self["piconpath2"].setText(self.piconfolder)
 		print("[PiconManager] set picon path to: %s" % self.piconfolder)
 		self.getFreeSpace()
 
 	""" paused for remove picons space
 	def changePiconName(self):
 		self.session.openWithCallback(self.gotNewPiconName, VirtualKeyBoard, title=(_("Enter Picon Dir:")), text=self.piconname)
-	"""
 
 	def gotNewPiconName(self, name):
 		if name is not None:
@@ -813,6 +826,7 @@ class PiconManagerScreen(Screen, HelpableScreen):
 			self.piconfolder = "%s%s/" % (self.picondir, self.piconname)
 			self['piconpath2'].setText(self.piconfolder)
 			print("[PiconManager] set picon path to: %s" % self.piconfolder)
+	"""
 
 	def url2Str(self, url):
 		try:
@@ -1119,7 +1133,7 @@ class PicRemoverScreen(Screen):
 	def __init__(self, session, picon_path):
 		Screen.__init__(self, session)
 		self.skinName = "PicRemoverScreen"
-		self.picon_path = picon_path
+		self.piconfolder = picon_path
 		self.unused_picons = MenuList([], enableWrapAround=True, content=eListboxPythonMultiContent)
 		font, size = parameters.get("PiconManagerListFont", ('Regular', 22))
 		self.unused_picons.l.setFont(0, gFont(font, size))
@@ -1130,7 +1144,7 @@ class PicRemoverScreen(Screen):
 		self["info"] = Label()
 		self['piconpath'] = Label(_("Picon folder: "))
 		self['piconcount'] = Label(_("Reading Picons..."))
-		self['piconpath2'] = Label(self.picon_path)
+		self['piconpath2'] = Label(self.piconfolder)
 		self['picon'] = Pixmap()
 		self["key_red"] = Label(_("Cancel"))
 		self["key_green"] = Label(_("Delete"))
@@ -1141,84 +1155,53 @@ class PicRemoverScreen(Screen):
 		}, -1)
 
 		self.channel_refs = set()
-		self.onLayoutFinish.append(self.startWorkflow)
+		self.onLayoutFinish.append(self.start_workflow)
 
-	def startWorkflow(self):
-		"""Safe scan of configured folder"""
-		try:
-			if not exists(self.picon_path):
-				self["info"].setText(_("Not valid path!"))
-				return
+	def start_workflow(self):
+		if not exists(self.piconfolder):
+			self['info'].setText(_("Invalid path!"))
+			return
 
-			picon_list = [f for f in listdir(self.picon_path) if f.lower().endswith('.png') and self.is_valid_picon_name(f)]
-			self.channel_list = self.buildChannellist()
-			self.unused_picons = []
-			channel_list_picon = {channel[0].replace(':', '_').rstrip('_') + '.png' for channel in self.channel_list}
-			self.unused_picons = [picon for picon in picon_list if picon not in channel_list_picon]
-			count = len(self.unused_picons)
-			self['piconcount'].setText(_("Picons to be deleted: {}").format(count))
-			self._update_ui()
-			print(f"[DEBUG] Channels: {len(self.channel_list)} | Picons found: {len(picon_list)}")
-			print(f"[DEBUG] Picons unused: {count}")
-		except Exception as e:
-			self["info"].setText(_("Error: ") + str(e))
-			notfoundWrite(f"Startup Error: {str(e)}")
+		channel_list = buildChannellist()
+		self.channel_refs = self.generate_picon_refs(channel_list)
+		files = [f for f in listdir(self.piconfolder) if f.lower().endswith('.png')]
+		# matched = [f for f in files if f.lower() in self.channel_refs]
+		unmatched = [f for f in files if f.lower() not in self.channel_refs]
+		self.unused_picons = [join(self.piconfolder, f) for f in unmatched]
+		self['piconcount'].setText(_("To delete: {}").format(len(unmatched)))
+		self._update_ui()
 
-	def buildChannellist(self):
-		channel_list = None
-		channel_list = []
-		bouquets = getTVBouquets()
-		print("[RemovePicons] found %s bouquet: %s" % (len(bouquets), bouquets))
-		for bouquet in bouquets:
-			bouquet_list = []
-			bouquet_list = getServiceList(bouquet[0])
-			for (serviceref, servicename) in bouquet_list:
-				channel_list.append((serviceref))
-		return channel_list
-
-	def startWorkflowX(self):
-		"""Start the picons detection process"""
-		try:
-			if not exists(self.picon_path):
-				self["info"].setText(_("Picon path not found!"))
-				return
-
-			self["info"].setText(_("Loading channels..."))
-			channel_list = self.buildChannellist()
-			self.channel_refs = self._generate_picon_refs(channel_list)
-
-			self["info"].setText(_("Scanning picon folder..."))
-			self._scan_picons()
-
-			self._update_ui()
-
-		except Exception as e:
-			self["info"].setText(_("Error: ") + str(e))
-			notfoundWrite(f"Startup Error: {str(e)}")
-
-	def _generate_picon_refs(self, channel_list):
-		"""Generate picon names directly from service references"""
+	def generate_picon_refs(self, channel_list):
 		refs = set()
-		for channel in channel_list:
-			if not channel or not channel[0]:
-				continue
+		for serviceref, servicename in channel_list:
 			try:
-				sref = eServiceReference(channel[0])
-				base_ref = sref.toString()
-				variants = [
-					base_ref.replace(':', '_').rstrip('_') + '.png',
-					"_".join(base_ref.split(":", 10)[:10]) + '.png',
-					self._sanitize_name(sref.getServiceName()) + '.png'
-				]
-				for suffix in ['', '-hd', '_fhd', '-4k', '_uhd']:
-					variants.append(
-						"_".join(base_ref.split(":", 7)[:7]) + f'{suffix}.png'  # Formato corto con suffisso
-					)
-				refs.update(variants)
+				sref = eServiceReference(serviceref)
+				base = sref.toString().replace(':', '_').rstrip('_')
+				refs.add(f"{base}.png")
+				refs.add("_".join(base.split("_")[:10]) + ".png")
+				clean = self._sanitize(servicename)
+				if clean:
+					refs.add(f"{clean}.png")
+				for suffix in ('', '-hd', '_fhd', '-4k', '_uhd'):
+					short = "_".join(base.split("_")[:7])
+					refs.add(f"{short}{suffix}.png")
 			except Exception as e:
-				notfoundWrite(f"Error processing {channel[0]}: {str(e)}")
+				notfoundWrite(f"Ref error for {serviceref}: {e}")
+		return {f.lower() for f in refs}
 
-		return {x.lower() for x in refs if x}
+	def _scan_picons(self):
+		self.unused_picons = []
+		valid, invalid = 0, 0
+		for f in listdir(self.piconfolder):
+			if not f.lower().endswith('.png') or not self.is_valid_picon_name(f):
+				invalid += 1
+				continue
+			name = f.lower()
+			if name in self.channel_refs:
+				valid += 1
+			else:
+				self.unused_picons.append(join(self.piconfolder, f))
+		print(f"[DEBUG] Valid: {valid}, Invalid: {invalid}, Unused: {len(self.unused_picons)}")
 
 	def _sanitize_name(self, name):
 		"""Service name cleaning for precise match"""
@@ -1226,38 +1209,22 @@ class PicRemoverScreen(Screen):
 			return ""
 		return sub(r'[^\w\-_]', '', name.replace(' ', '_')).lower()
 
-	def _scan_picons(self):
-		"""Safe scan of configured folder"""
-		if not exists(self.picon_path):
-			self["info"].setText(_("Not valid path!"))
-			return
-
-		self.unused_picons = []
-		try:
-			for f in listdir(self.picon_path):
-				full_path = join(self.picon_path, f)
-				if isfile(full_path) and f.lower().endswith('.png'):
-					base_name = f.split('.')[0]
-					if not any(
-						base_name.startswith(ref.split('.')[0]) or
-						base_name.replace('-hd', '') in self.channel_refs
-						for ref in self.channel_refs
-					):
-						self.unused_picons.append(full_path)
-			self._update_ui()
-		except Exception as e:
-			self["info"].setText(_("Scanning Error"))
-			notfoundWrite(f"Scan Error: {str(e)}")
-
 	def _update_ui(self):
 		"""Update UI with external data"""
 		try:
 			self.display_entries = [[basename(p)] for p in self.unused_picons]
 			templated_list = [ListEntry(e) for e in self.display_entries]
-			self["list"].setList(templated_list)
-			count_text = _("Picons founds: {}").format(len(templated_list))
-			self["info"].setText(count_text)
-			self.showPic()
+			count = len(templated_list)
+			self['piconcount'].setText(_("Picons to be deleted: {}").format(count))
+
+			if count == 0:
+				self["info"].setText(_("No picons to delete"))
+				self["list"].setList(list(map(ListEntry, [(_("No picons to delete"),)])))
+			else:
+				count_text = _("Picons found: {}").format(count)
+				self["info"].setText(count_text)
+				self.showPic()
+				self["list"].setList(templated_list)
 			print(f"[DEBUG] Picons not used: {len(templated_list)}")
 		except Exception as e:
 			print(f"UI update error: {str(e)}")
@@ -1272,15 +1239,15 @@ class PicRemoverScreen(Screen):
 		deleted = 0
 		errors = 0
 		print(f"[DEBUG] Total picons to remove: {len(self.unused_picons)}")
-
 		for picon in self.unused_picons:
 			try:
-				picon_path = join(self.picon_path, picon)
-
+				picon_path = join(self.piconfolder, picon)
 				if not self.is_valid_picon_name(picon):
 					print(f"[DEBUG] Skipping invalid file name: {picon}")
 					continue
-				if exists(picon_path) and picon_path.startswith(self.picon_path):
+
+				print(f"[DEBUG] Attempting to delete: {picon_path}")
+				if exists(picon_path) and picon_path.startswith(self.piconfolder):
 					print(f"[DEBUG] Removing picon: {picon_path}")
 					remove(picon_path)
 					deleted += 1
@@ -1290,12 +1257,10 @@ class PicRemoverScreen(Screen):
 			except Exception as e:
 				notfoundWrite(f"Delete Error: {picon_path} - {str(e)}")
 				errors += 1
-
 		if config.plugins.piconmanager.debug.value:
 			with open(picon_debug_file, "a") as log:
 				log.write(f"Valid References: {self.channel_refs}\n")
 				log.write(f"Unmatched Files: {self.unused_picons}\n")
-
 		self._show_result(deleted, errors)
 
 	def _show_result(self, deleted, errors):
@@ -1319,7 +1284,7 @@ class PicRemoverScreen(Screen):
 			return
 
 		pic_name = self.unused_picons[current_index]
-		pic_path = join(self.picon_path, pic_name)
+		pic_path = join(self.piconfolder, pic_name)
 		if not exists(pic_path):
 			print(f"[DEBUG] Picon file does not exist: {pic_path}")
 			return
@@ -1340,10 +1305,10 @@ class PicRemoverScreen(Screen):
 			self["picon"].hide()
 
 	def is_valid_picon_name(self, picon):
-		valid_characters = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_")
-		if all(c in valid_characters for c in picon):
-			return True
-		return bool(match(r'^[\w\-\.]+$', picon))
+		filename = basename(picon)
+		valid = bool(match(r'^[\w\-\.]+$', filename))
+		print(f"[DEBUG] Validating picon: {filename} -> {'Valid' if valid else 'Invalid'}")
+		return valid
 
 	def close(self, result=None):
 		super().close(result)

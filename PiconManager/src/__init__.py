@@ -25,21 +25,21 @@ localeInit()
 language.addCallback(localeInit)
 
 
-DEFAULT_PICON_PATH = '/usr/share/enigma2/'
+DEFAULT_PICON_PATH = '/usr/share/enigma2/picon'
 ALTERN_PICON_PATH = [
-	'/usr/share/enigma2/',
-	'/media/usb/',
-	'/media/hdd/',
-	'/',
-	'/data/',
-	'/media/mmc/',
-	'/media/sdcard/',
-	'/media/hdd/XPicons/',
-	'/media/hdd/ZZPicons/',
-	'/media/usb/XPicons/',
-	'/media/usb/ZZPicons/',
-	'/usr/share/enigma2/XPicons/',
-	'/usr/share/enigma2/ZZPicons/',
+	'/usr/share/enigma2/picon',
+	'/media/usb/picon',
+	'/media/hdd/picon',
+	'/picon',
+	'/data/picon',
+	'/media/mmc/picon',
+	'/media/sdcard/picon',
+	'/media/hdd/XPicons/picon',
+	'/media/hdd/ZZPicons/picon',
+	'/media/usb/XPicons/picon',
+	'/media/usb/ZZPicons/picon',
+	'/usr/share/enigma2/XPicons/picon',
+	'/usr/share/enigma2/ZZPicons/picon',
 	'user_defined'
 ]
 
