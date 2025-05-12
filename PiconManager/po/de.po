@@ -7,9 +7,9 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PiconManagerMod\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-05-11 14:29+0200\n"
+"POT-Creation-Date: 2025-05-11 14:28+0200\n"
 "PO-Revision-Date: \n"
-"Last-Translator: NaseDC\n"
+"Last-Translator: Masta2002\n"
 "Language-Team: NaseDC+shadowrider <plugins@fselbig.de>\n"
 "Language: de_DE\n"
 "MIME-Version: 1.0\n"
@@ -18,14 +18,10 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "X-Poedit-SourceCharset: iso-8859-1\n"
 "X-Generator: Poedit 3.6\n"
-"X-Poedit-Basepath: ../src\n"
-"X-Poedit-SearchPath-0: plugin.py\n"
 
 #: plugin.py:75
-#, fuzzy
-#| msgid "PiconManager (mod)"
 msgid "PiconManager"
-msgstr "PiconManager (mod)"
+msgstr "PiconManager"
 
 #: plugin.py:76
 msgid "Manage your Picons"
@@ -93,7 +89,7 @@ msgstr "Verzeichnis wählen"
 
 #: plugin.py:275
 msgid "Remove Picons Unused"
-msgstr ""
+msgstr "Unbenutzte Picons entfernen"
 
 #: plugin.py:280
 msgid "Show random Picon"
@@ -144,10 +140,8 @@ msgid "Set / clear standard Picon"
 msgstr "Setze / entferne Standardpicon"
 
 #: plugin.py:308
-#, fuzzy
-#| msgid "Next picon creator"
 msgid "Open picon remover"
-msgstr "Nächster Piconersteller"
+msgstr "Öffne Picon Entferner"
 
 #: plugin.py:317 plugin.py:1119
 msgid "V"
@@ -156,17 +150,15 @@ msgstr "V"
 #: plugin.py:338
 #, python-format
 msgid "Removed %d unused picons!"
-msgstr ""
+msgstr "%d unbenutzte Picons entfernt!"
 
 #: plugin.py:348
 msgid "Select service for preferred picon"
 msgstr "Sender für das Picon wählen"
 
 #: plugin.py:475
-#, fuzzy
-#| msgid "FreeSpace: Drive Not Found !"
 msgid "FreeSpace: Drive Not Found!"
-msgstr "Freier Speicher: Kein Speicher gefunden!"
+msgstr "Freier Speicher: Laufwerk nicht gefunden!"
 
 #: plugin.py:490
 msgid "FreeSpace:"
@@ -175,7 +167,7 @@ msgstr "Freier Speicher:"
 #: plugin.py:495
 #, python-brace-format
 msgid "FreeSpace: Error - {error}"
-msgstr ""
+msgstr "Freier Speicher: Fehler - {error}"
 
 #: plugin.py:541
 msgid "Channels:"
@@ -192,17 +184,15 @@ msgstr "Lade, bitte warten ..."
 #: plugin.py:674
 #, python-format
 msgid "%s"
-msgstr ""
+msgstr "%s"
 
 #: plugin.py:732
-#, fuzzy
-#| msgid "No search results, please change filter options ..."
 msgid "No search results, please change filter options..."
-msgstr "Keine Suchergebnisse , ändere bitte die Filteroptionen ..."
+msgstr "Keine Suchergebnisse , ändere bitte die Filteroptionen..."
 
 #: plugin.py:765
 msgid "No picons available in selected list"
-msgstr ""
+msgstr "Keine Picons in der ausgewählten Liste vorhanden"
 
 #: plugin.py:884
 msgid "is not installed."
@@ -213,26 +203,22 @@ msgid "loading"
 msgstr "Herunterladen der Picons"
 
 #: plugin.py:936 plugin.py:1004
-#, fuzzy
-#| msgid "Picons loaded: "
 msgid "Picon loaded:"
-msgstr "Picons geladen: "
+msgstr "Picons geladen:"
 
 #: plugin.py:950
-#, fuzzy
-#| msgid "Download picons"
 msgid "Downloads completed"
-msgstr "Lade Picons"
+msgstr "Downloads abgeschlossen"
 
 #: plugin.py:950
 #, python-format
 msgid "Success: %d"
-msgstr ""
+msgstr "Erfolgreich: %d"
 
 #: plugin.py:950
 #, python-format
 msgid "Errors: %d"
-msgstr ""
+msgstr "Fehler: %d"
 
 #: plugin.py:1048
 msgid "Clean up the directory"
@@ -251,10 +237,8 @@ msgid "Server temporarily unavailable"
 msgstr "Server momentan nicht erreichbar"
 
 #: plugin.py:1124
-#, fuzzy
-#| msgid "Reading Channels..."
 msgid "Reading Picons..."
-msgstr "Lese Kanäle..."
+msgstr "Lese Picons..."
 
 #: plugin.py:1127 plugin.py:1380 plugin.py:1442 plugin.py:1447 plugin.py:1457
 msgid "Cancel"
@@ -262,65 +246,55 @@ msgstr "Abbrechen"
 
 #: plugin.py:1128
 msgid "Delete"
-msgstr ""
+msgstr "Löschen"
 
 #: plugin.py:1142 plugin.py:1224
 msgid "Not valid path!"
-msgstr ""
+msgstr "Kein gültiger Pfad!"
 
 #: plugin.py:1151
-#, fuzzy
-#| msgid "Picons loaded: "
 msgid "Picons to be deleted: {}"
-msgstr "Picons geladen: "
+msgstr "Zu löschende Picons: {}"
 
 #: plugin.py:1156 plugin.py:1188
-#, fuzzy
-#| msgid "Creator: "
 msgid "Error: "
-msgstr "Ersteller: "
+msgstr "Fehler: "
 
 #: plugin.py:1175
-#, fuzzy
-#| msgid "Picons not found: "
 msgid "Picon path not found!"
-msgstr "Nicht gefundene Picons: "
+msgstr "Picon Pfad nicht gefunden!"
 
 #: plugin.py:1178
-#, fuzzy
-#| msgid "Reading Channels..."
 msgid "Loading channels..."
-msgstr "Lese Kanäle..."
+msgstr "Lade Kanäle..."
 
 #: plugin.py:1182
 msgid "Scanning picon folder..."
-msgstr ""
+msgstr "Scanne Picon Ordner..."
 
 #: plugin.py:1241
 msgid "Scanning Error"
-msgstr ""
+msgstr "Fehler beim Scannen"
 
 #: plugin.py:1250
-#, fuzzy
-#| msgid "Picons not found: "
 msgid "Picons founds: {}"
-msgstr "Nicht gefundene Picons: "
+msgstr "Picons gefunden: {}"
 
 #: plugin.py:1255
 msgid "Data display error"
-msgstr ""
+msgstr "Datenanzeigefehler"
 
 #: plugin.py:1293
 msgid "Operation completed!"
-msgstr ""
+msgstr "Vorgang abgeschlossen!"
 
 #: plugin.py:1294
 msgid "Deleted: {}"
-msgstr ""
+msgstr "Gelöscht: {}"
 
 #: plugin.py:1295
 msgid "Errors: {}"
-msgstr ""
+msgstr "Fehler: {}"
 
 #: plugin.py:1375
 msgid "Choose Picon folder"
@@ -368,20 +342,8 @@ msgstr "Option:"
 
 #: plugin.py:1474
 msgid "Remember permanently?"
-msgstr "dauerhaft merken?"
+msgstr "Dauerhaft merken?"
 
 #: plugin.py:1475
 msgid "Activate debug logging?"
 msgstr "Debug-Protokollierung aktivieren?"
-
-#~ msgid "Create folder"
-#~ msgstr "Erstelle Ordner"
-
-#~ msgid "Enter Picon Dir:"
-#~ msgstr "Erstelle Piconverzeichnis:"
-
-#~ msgid "Loaded Picons:"
-#~ msgstr "Geladene Picons:"
-
-#~ msgid "Not found Picons:"
-#~ msgstr "Nicht gefundene Picons:"
