@@ -29,7 +29,7 @@ from uuid import uuid4
 from shutil import rmtree
 from random import choice
 from datetime import date
-from re import S, I, search, sub, match
+from re import sub, match
 from os import mkdir, makedirs, statvfs, remove, listdir
 from os.path import exists, isdir, basename, join
 
@@ -900,6 +900,7 @@ class PiconManagerScreen(Screen, HelpableScreen):
 		no_drive = False
 		self.countload = 0
 		self.counterrors = 0
+		urls = []
 
 		if self['list'].getCurrent():
 			if not isdir(self.picondir):
